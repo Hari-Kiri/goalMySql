@@ -1,0 +1,4 @@
+github.com/Hari-Kiri/goalApplicationSettingsLoader v0.0.0-20220621110644-eabbf3c999fa h1:e0y1sYbs9EfUJVYxokLUS+WFIwH6CfZz+Rh2k+65XVw=
+github.com/Hari-Kiri/goalApplicationSettingsLoader v0.0.0-20220621110644-eabbf3c999fa/go.mod h1:Sc7yrkmrv3hVE3D95IG5Ejo0ksJPXs+dHK9hwB4DeCs=
+github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
+github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=

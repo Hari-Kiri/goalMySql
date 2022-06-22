@@ -1,2 +1,2 @@
 # goalMySql
-MySql library for Go programming language.
+Go MySql library.

@@ -2,8 +2,8 @@ package goalMySql
 
 import (
 	"database/sql"
-	"log"
 	"fmt"
+	"log"
 	"reflect"
 
 	"github.com/Hari-Kiri/goalApplicationSettingsLoader"
@@ -12,7 +12,7 @@ import (
 
 // MySql database connection initializer
 func Initialize(allowNativePassword bool) (*sql.DB, error) {
-	loadDatabaseConfiguration, error := applicationSettingsLoader.LoadDatabaseConfiguration()
+	loadDatabaseConfiguration, error := goalApplicationSettingsLoader.LoadDatabaseConfiguration()
 	// If LoadDatabaseConfiguration() return error handle it
 	if error != nil {
 		return nil, error
@@ -104,4 +104,3 @@ func Select(databaseHandler *sql.DB, column string, table string,
 	}
 	return list, nil
 }
-

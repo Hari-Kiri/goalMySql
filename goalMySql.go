@@ -36,7 +36,7 @@ func Initialize(allowNativePassword bool) (*sql.DB, error) {
 	if errorSelectVersion != nil {
 		return nil, errorSelectVersion
 	}
-	log.Println("[info] Initializing connection to MySql version " + mySqlVersion)
+	log.Println("[info] goalMySql: connecting to MySql version " + mySqlVersion)
 	// Return mysql connect session
 	return connect, nil
 }

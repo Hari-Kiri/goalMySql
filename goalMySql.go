@@ -111,7 +111,7 @@ func Select(databaseHandler *sql.DB, selectColumn string, table string,
 func Update(databaseHandler *sql.DB, updateTable string, column string,
 	condition string, inputParameters ...any) (int64, error) {
 	// MySql update query
-	query := "UPDATE " + updateTable + " SET " + column + " WHERE " + condition
+	query := "UPDATE " + updateTable + " SET " + column + " " + condition
 	executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters)
 	if errorExecutingQuery != nil {
 		return 0, fmt.Errorf("failed to executing query: %v", errorExecutingQuery)

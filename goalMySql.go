@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 
 	"github.com/Hari-Kiri/goalApplicationSettingsLoader"
 	"github.com/go-sql-driver/mysql"
@@ -122,5 +123,29 @@ func Update(databaseHandler *sql.DB, updateTable string, column string,
 		return 0, fmt.Errorf("failed to get how many rows updated: %v", errorGetRowsAffected)
 	}
 	// Return the total of rows updated
+	return int(rowsAffected), nil
+}
+
+// Insert into MySql table. On success update this method will return how many rows affected.
+// Please put your dynamic parameter string in inputParameters to prevent SQL Injection.
+func Insert(databaseHandler *sql.DB, insertIntoTable string, column string, inputParameters ...any) (int, error) {
+	// Create values parameter placeholders
+	var inputParams strings.Builder
+	inputParams.WriteString("?")
+	for i := 1; i < len(inputParameters); i++ {
+		inputParams.WriteString(", ?")
+	}
+	// MySql insert query
+	query := "INSERT INTO " + insertIntoTable + " (" + column + ") VALUES (" + inputParams.String() + ")"
+	result, errorQueryResult := databaseHandler.Exec(query, inputParameters...)
+	if errorQueryResult != nil {
+		return 0, fmt.Errorf("failed insert data to database: %q, mysql syntax: %q", errorQueryResult, query)
+	}
+	// Get the new album's generated ID for the client.
+	rowsAffected, errorGetRowsAffected := result.RowsAffected()
+	if errorGetRowsAffected != nil {
+		return 0, fmt.Errorf("AddAlbum: %v", errorGetRowsAffected)
+	}
+	// Return the new album's ID.
 	return int(rowsAffected), nil
 }

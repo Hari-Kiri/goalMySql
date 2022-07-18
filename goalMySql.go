@@ -114,7 +114,7 @@ func Update(databaseHandler *sql.DB, updateTable string, column string,
 	query := "UPDATE " + updateTable + " SET " + column + " " + condition
 	executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters...)
 	if errorExecutingQuery != nil {
-		return 0, fmt.Errorf("failed to executing query: %v", errorExecutingQuery)
+		return 0, fmt.Errorf("failed to executing query: %v, mysql syntax: %v", errorExecutingQuery, query)
 	}
 	// Get rows updated
 	rowsAffected, errorGetRowsAffected := executeQuery.RowsAffected()

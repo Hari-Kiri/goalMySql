@@ -109,7 +109,7 @@ func Select(databaseHandler *sql.DB, selectColumn string, table string,
 // Update MySql table. On success update this method will return how many rows affected.
 // Please put your dynamic parameter string in inputParameters to prevent SQL Injection.
 func Update(databaseHandler *sql.DB, updateTable string, column string,
-	condition string, inputParameters ...any) (int64, error) {
+	condition string, inputParameters ...any) (int, error) {
 	// MySql update query
 	query := "UPDATE " + updateTable + " SET " + column + " " + condition
 	executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters...)
@@ -122,5 +122,5 @@ func Update(databaseHandler *sql.DB, updateTable string, column string,
 		return 0, fmt.Errorf("failed to get how many rows updated: %v", errorGetRowsAffected)
 	}
 	// Return the total of rows updated
-	return rowsAffected, nil
+	return int(rowsAffected), nil
 }

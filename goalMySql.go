@@ -51,7 +51,8 @@ func PingDatabase(databaseHandler *sql.DB) (bool, error) {
 	return true, nil
 }
 
-// Select query for returning multiple rows
+// Select query for returning multiple rows.Please put your dynamic parameter string in inputParameters to
+// prevent SQL Injection.
 func Select(databaseHandler *sql.DB, selectColumn string, table string,
 	condition string, inputParameters ...any) ([]map[string]interface{}, error) {
 	// Execute query
@@ -105,6 +106,8 @@ func Select(databaseHandler *sql.DB, selectColumn string, table string,
 	return list, nil
 }
 
+// Update MySql table. On success update this method will return how many rows affected.
+// Please put your dynamic parameter string in inputParameters to prevent SQL Injection.
 func Update(databaseHandler *sql.DB, updateTable string, column string,
 	condition string, inputParameters ...any) (int64, error) {
 	// MySql update query

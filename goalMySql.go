@@ -52,22 +52,22 @@ func PingDatabase(databaseHandler *sql.DB) (bool, error) {
 }
 
 // Select query for returning multiple rows
-func Select(databaseHandler *sql.DB, column string, table string,
+func Select(databaseHandler *sql.DB, selectColumn string, table string,
 	condition string, inputParameters ...any) ([]map[string]interface{}, error) {
 	// Execute query
-	query := "SELECT " + column + " FROM " + table + " " + condition
-	rows, error := databaseHandler.Query(query, inputParameters...)
-	if error != nil {
+	query := "SELECT " + selectColumn + " FROM " + table + " " + condition
+	rows, errorGetRows := databaseHandler.Query(query, inputParameters...)
+	if errorGetRows != nil {
 		return nil, fmt.Errorf(
-			"failed to querying database => mysql query syntax %q => query parameters %q => %q",
-			query, inputParameters, error)
+			"failed to executing query: mysql query syntax %q, query parameters %q, mysql error %s",
+			query, inputParameters, errorGetRows)
 	}
 	// Then close rows
 	defer rows.Close()
 	// Get columns
-	columns, error := rows.Columns()
-	if error != nil {
-		return nil, fmt.Errorf("failed to get columns => %q", error)
+	columns, errorGetColumns := rows.Columns()
+	if errorGetColumns != nil {
+		return nil, fmt.Errorf("failed to get columns: %s", errorGetColumns)
 	}
 	// Make map string interface array variable
 	list := make([]map[string]interface{}, 0)
@@ -82,9 +82,9 @@ func Select(databaseHandler *sql.DB, column string, table string,
 			values[index] = &stringPointer
 		}
 		// Scan rows from MySQL query result
-		error = rows.Scan(values...)
-		if error != nil {
-			return nil, fmt.Errorf("failed to scan rows => %q", error)
+		errorGetRows = rows.Scan(values...)
+		if errorGetRows != nil {
+			return nil, fmt.Errorf("failed to scan rows: %s", errorGetRows)
 		}
 		// Make map string interface variable to store temporary interface values
 		mapStringInterface := make(map[string]interface{})
@@ -103,4 +103,21 @@ func Select(databaseHandler *sql.DB, column string, table string,
 		list = append(list, mapStringInterface)
 	}
 	return list, nil
+}
+
+func Update(databaseHandler *sql.DB, updateTable string, column string,
+	condition string, inputParameters ...any) (int64, error) {
+	// MySql update query
+	query := "UPDATE " + updateTable + " SET " + column + " WHERE " + condition
+	executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters)
+	if errorExecutingQuery != nil {
+		return 0, fmt.Errorf("failed to executing query: %v", errorExecutingQuery)
+	}
+	// Get rows updated
+	rowsAffected, errorGetRowsAffected := executeQuery.RowsAffected()
+	if errorGetRowsAffected != nil {
+		return 0, fmt.Errorf("failed to get how many rows updated: %v", errorGetRowsAffected)
+	}
+	// Return the total of rows updated
+	return rowsAffected, nil
 }

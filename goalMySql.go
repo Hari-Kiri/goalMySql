@@ -52,8 +52,8 @@ func PingDatabase(databaseHandler *sql.DB) (bool, error) {
 	return true, nil
 }
 
-// Select query for returning multiple rows.Please put your dynamic parameter string in inputParameters to
-// prevent SQL Injection.
+// MySql select query for multiple rows of data.
+// Please put your parameter placeholders in inputParameters to prevent SQL Injection.
 func Select(databaseHandler *sql.DB, selectColumn string, table string,
 	condition string, inputParameters ...any) ([]map[string]interface{}, error) {
 	// Execute query
@@ -107,12 +107,17 @@ func Select(databaseHandler *sql.DB, selectColumn string, table string,
 	return list, nil
 }
 
-// Update MySql table. On success update this method will return how many rows affected.
-// Please put your dynamic parameter string in inputParameters to prevent SQL Injection.
-func Update(databaseHandler *sql.DB, updateTable string, column string,
+// Update MySql table. On success update this method will return how many rows updated.
+// Please put your parameter placeholders in inputParameters to prevent SQL Injection.
+func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 	condition string, inputParameters ...any) (int, error) {
+	// Create update value parameter placeholders
+	var columnPlaceholders strings.Builder
+	for _, column := range columns {
+		columnPlaceholders.WriteString(column + " = ?, ")
+	}
 	// MySql update query
-	query := "UPDATE " + updateTable + " SET " + column + " " + condition
+	query := "UPDATE " + updateTable + " SET " + columnPlaceholders.String() + " " + condition
 	executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters...)
 	if errorExecutingQuery != nil {
 		return 0, fmt.Errorf("failed to executing query: %v, mysql syntax: %v", errorExecutingQuery, query)
@@ -127,16 +132,21 @@ func Update(databaseHandler *sql.DB, updateTable string, column string,
 }
 
 // Insert into MySql table. On success update this method will return how many rows affected.
-// Please put your dynamic parameter string in inputParameters to prevent SQL Injection.
-func Insert(databaseHandler *sql.DB, insertIntoTable string, column string, inputParameters ...any) (int, error) {
-	// Create values parameter placeholders
-	var inputParams strings.Builder
-	inputParams.WriteString("?")
+// Please put your parameter placeholders in inputParameters to prevent SQL Injection.
+func Insert(databaseHandler *sql.DB, insertIntoTable string, columns []string, inputParameters ...any) (int, error) {
+	// Create value parameter placeholders
+	var valuePlaceholders strings.Builder
+	valuePlaceholders.WriteString("?")
 	for i := 1; i < len(inputParameters); i++ {
-		inputParams.WriteString(", ?")
+		valuePlaceholders.WriteString(", ?")
+	}
+	// Extract columns parameter to syntax string
+	var columnString strings.Builder
+	for _, column := range columns {
+		columnString.WriteString(column)
 	}
 	// MySql insert query
-	query := "INSERT INTO " + insertIntoTable + " (" + column + ") VALUES (" + inputParams.String() + ")"
+	query := "INSERT INTO " + insertIntoTable + " (" + columnString.String() + ") VALUES (" + valuePlaceholders.String() + ")"
 	result, errorQueryResult := databaseHandler.Exec(query, inputParameters...)
 	if errorQueryResult != nil {
 		return 0, fmt.Errorf("failed insert data to database: %q, mysql syntax: %q", errorQueryResult, query)

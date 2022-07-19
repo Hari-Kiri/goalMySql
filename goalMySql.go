@@ -113,11 +113,15 @@ func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 	condition string, inputParameters ...any) (int, error) {
 	// Create update value parameter placeholders
 	var columnPlaceholders strings.Builder
+	// Get last column from columns parameter
+	lastColumn := columns[len(columns)-1] + " = ?"
+	// Delete last column from columns parameter
+	columns = columns[:len(columns)-1]
 	for _, column := range columns {
 		columnPlaceholders.WriteString(column + " = ?, ")
 	}
 	// MySql update query
-	query := "UPDATE " + updateTable + " SET " + columnPlaceholders.String() + " " + condition
+	query := "UPDATE " + updateTable + " SET " + columnPlaceholders.String() + lastColumn + " " + condition
 	executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters...)
 	if errorExecutingQuery != nil {
 		return 0, fmt.Errorf("failed to executing query: %v, mysql syntax: %v", errorExecutingQuery, query)
@@ -142,11 +146,17 @@ func Insert(databaseHandler *sql.DB, insertIntoTable string, columns []string, i
 	}
 	// Extract columns parameter to syntax string
 	var columnString strings.Builder
+	// Get last column from columns parameter
+	lastColumn := columns[len(columns)-1]
+	// Delete last column from columns parameter
+	columns = columns[:len(columns)-1]
+	// Extract columns
 	for _, column := range columns {
-		columnString.WriteString(column)
+		columnString.WriteString(column + ", ")
 	}
 	// MySql insert query
-	query := "INSERT INTO " + insertIntoTable + " (" + columnString.String() + ") VALUES (" + valuePlaceholders.String() + ")"
+	query := "INSERT INTO " + insertIntoTable + " (" + columnString.String() + lastColumn + ") VALUES (" +
+		valuePlaceholders.String() + ")"
 	result, errorQueryResult := databaseHandler.Exec(query, inputParameters...)
 	if errorQueryResult != nil {
 		return 0, fmt.Errorf("failed insert data to database: %q, mysql syntax: %q", errorQueryResult, query)
@@ -154,7 +164,7 @@ func Insert(databaseHandler *sql.DB, insertIntoTable string, columns []string, i
 	// Get the new album's generated ID for the client.
 	rowsAffected, errorGetRowsAffected := result.RowsAffected()
 	if errorGetRowsAffected != nil {
-		return 0, fmt.Errorf("AddAlbum: %v", errorGetRowsAffected)
+		return 0, errorGetRowsAffected
 	}
 	// Return the new album's ID.
 	return int(rowsAffected), nil

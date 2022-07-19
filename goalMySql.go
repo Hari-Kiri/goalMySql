@@ -13,10 +13,10 @@ import (
 
 // MySql database connection initializer
 func Initialize(allowNativePassword bool) (*sql.DB, error) {
-	loadDatabaseConfiguration, error := goalApplicationSettingsLoader.LoadDatabaseConfiguration()
+	loadDatabaseConfiguration, errorLoadDatabaseConfiguration := goalApplicationSettingsLoader.LoadDatabaseConfiguration()
 	// If LoadDatabaseConfiguration() return error handle it
-	if error != nil {
-		return nil, error
+	if errorLoadDatabaseConfiguration != nil {
+		return nil, errorLoadDatabaseConfiguration
 	}
 	configuration := mysql.Config{
 		User:                 loadDatabaseConfiguration.DatabaseConfiguration.User,
@@ -27,9 +27,9 @@ func Initialize(allowNativePassword bool) (*sql.DB, error) {
 		AllowNativePasswords: allowNativePassword,
 	}
 	// Connect to database
-	connect, error := sql.Open("mysql", configuration.FormatDSN())
-	if error != nil {
-		return nil, error
+	connect, errorConnect := sql.Open("mysql", configuration.FormatDSN())
+	if errorConnect != nil {
+		return nil, errorConnect
 	}
 	// Logging to console
 	var mySqlVersion string
@@ -111,6 +111,26 @@ func Select(databaseHandler *sql.DB, selectColumn string, table string,
 // Please put your parameter placeholders in inputParameters to prevent SQL Injection.
 func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 	condition string, inputParameters ...any) (int, error) {
+	if len(columns) == 0 {
+		return 0, fmt.Errorf("no column: %v", columns)
+	}
+	// Single column update
+	if len(columns) == 1 {
+		column := columns[0] + " = ?"
+		// MySql update query
+		query := "UPDATE " + updateTable + " SET " + column + " " + condition
+		executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters...)
+		if errorExecutingQuery != nil {
+			return 0, fmt.Errorf("failed to executing query: %v, mysql syntax: %v", errorExecutingQuery, query)
+		}
+		// Get rows updated
+		rowsAffected, errorGetRowsAffected := executeQuery.RowsAffected()
+		if errorGetRowsAffected != nil {
+			return 0, fmt.Errorf("failed to get how many rows updated: %v", errorGetRowsAffected)
+		}
+		// Return the total of rows updated
+		return int(rowsAffected), nil
+	}
 	// Create update value parameter placeholders
 	var columnPlaceholders strings.Builder
 	// Get last column from columns parameter
@@ -138,6 +158,26 @@ func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 // Insert into MySql table. On success update this method will return how many rows affected.
 // Please put your parameter placeholders in inputParameters to prevent SQL Injection.
 func Insert(databaseHandler *sql.DB, insertIntoTable string, columns []string, inputParameters ...any) (int, error) {
+	if len(columns) == 0 {
+		return 0, fmt.Errorf("no column: %v", columns)
+	}
+	// Single column insert
+	if len(columns) == 1 {
+		column := columns[0]
+		// MySql insert query
+		query := "INSERT INTO " + insertIntoTable + " (" + column + ") VALUES (?)"
+		result, errorQueryResult := databaseHandler.Exec(query, inputParameters...)
+		if errorQueryResult != nil {
+			return 0, fmt.Errorf("failed insert data to database: %q, mysql syntax: %q", errorQueryResult, query)
+		}
+		// Get the new album's generated ID for the client.
+		rowsAffected, errorGetRowsAffected := result.RowsAffected()
+		if errorGetRowsAffected != nil {
+			return 0, errorGetRowsAffected
+		}
+		// Return the new album's ID.
+		return int(rowsAffected), nil
+	}
 	// Create value parameter placeholders
 	var valuePlaceholders strings.Builder
 	valuePlaceholders.WriteString("?")

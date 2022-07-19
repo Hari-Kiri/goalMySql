@@ -54,10 +54,75 @@ func PingDatabase(databaseHandler *sql.DB) (bool, error) {
 
 // MySql select query for multiple rows of data.
 // Please put your parameter placeholders in inputParameters to prevent SQL Injection.
-func Select(databaseHandler *sql.DB, selectColumn string, table string,
+func Select(databaseHandler *sql.DB, columns []string, selectTable string,
 	condition string, inputParameters ...any) ([]map[string]interface{}, error) {
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("no columns: %q", columns)
+	}
+	if len(columns) == 1 {
+		column := columns[0]
+		// Execute query
+		query := "SELECT " + column + " FROM " + selectTable + " " + condition
+		rows, errorGetRows := databaseHandler.Query(query, inputParameters...)
+		if errorGetRows != nil {
+			return nil, fmt.Errorf(
+				"failed to executing query: mysql query syntax %q, query parameters %q, mysql error %s",
+				query, inputParameters, errorGetRows)
+		}
+		// Then close rows
+		defer rows.Close()
+		// Get columns
+		columns, errorGetColumns := rows.Columns()
+		if errorGetColumns != nil {
+			return nil, fmt.Errorf("failed to get columns: %s", errorGetColumns)
+		}
+		// Make map string interface array variable
+		list := make([]map[string]interface{}, 0)
+		// Iterate query result
+		for rows.Next() {
+			// Make temporary interface to store MySQL query result value
+			values := make([]interface{}, len(columns))
+			// Every values returned from MySQL query assign to a string pointer
+			// and all the memory adresses store in temporary interface for further process
+			for index := range columns {
+				var stringPointer string
+				values[index] = &stringPointer
+			}
+			// Scan rows from MySQL query result
+			errorGetRows = rows.Scan(values...)
+			if errorGetRows != nil {
+				return nil, fmt.Errorf("failed to scan rows: %s", errorGetRows)
+			}
+			// Make map string interface variable to store temporary interface values
+			mapStringInterface := make(map[string]interface{})
+			// Read every pointer value from temporary interface then store all the data
+			// to map string interface variable
+			for index, value := range values {
+				pointer := reflect.ValueOf(value)
+				queryResult := pointer.Interface()
+				if pointer.Kind() == reflect.Ptr {
+					queryResult = pointer.Elem().Interface()
+				}
+				mapStringInterface[columns[index]] = queryResult
+			}
+			// Store all data from map string interface variable
+			// to map string interface array variable
+			list = append(list, mapStringInterface)
+		}
+		return list, nil
+	}
+	// Extract columns parameter to syntax string
+	var columnString strings.Builder
+	// Get last column from columns parameter
+	lastColumn := columns[len(columns)-1]
+	// Delete last column from columns parameter
+	columns = columns[:len(columns)-1]
+	// Extract columns
+	for _, column := range columns {
+		columnString.WriteString(column + ", ")
+	}
 	// Execute query
-	query := "SELECT " + selectColumn + " FROM " + table + " " + condition
+	query := "SELECT " + columnString.String() + lastColumn + " FROM " + selectTable + " " + condition
 	rows, errorGetRows := databaseHandler.Query(query, inputParameters...)
 	if errorGetRows != nil {
 		return nil, fmt.Errorf(
@@ -108,11 +173,11 @@ func Select(databaseHandler *sql.DB, selectColumn string, table string,
 }
 
 // Update MySql table. On success update this method will return how many rows updated.
-// Please put your parameter placeholders in inputParameters to prevent SQL Injection.
+// Please put your parameter placeholders values in inputParameters to prevent SQL Injection.
 func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 	condition string, inputParameters ...any) (int, error) {
 	if len(columns) == 0 {
-		return 0, fmt.Errorf("no column: %v", columns)
+		return 0, fmt.Errorf("no column: %q", columns)
 	}
 	// Single column update
 	if len(columns) == 1 {
@@ -156,10 +221,10 @@ func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 }
 
 // Insert into MySql table. On success update this method will return how many rows affected.
-// Please put your parameter placeholders in inputParameters to prevent SQL Injection.
+// Please put your parameter placeholders values in inputParameters to prevent SQL Injection.
 func Insert(databaseHandler *sql.DB, insertIntoTable string, columns []string, inputParameters ...any) (int, error) {
 	if len(columns) == 0 {
-		return 0, fmt.Errorf("no column: %v", columns)
+		return 0, fmt.Errorf("no column: %q", columns)
 	}
 	// Single column insert
 	if len(columns) == 1 {

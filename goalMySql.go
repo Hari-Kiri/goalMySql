@@ -3,7 +3,6 @@ package goalMySql
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -37,7 +36,6 @@ func Initialize(allowNativePassword bool) (*sql.DB, error) {
 	if errorSelectVersion != nil {
 		return nil, errorSelectVersion
 	}
-	log.Println("[info] goalMySql: connecting to MySql version " + mySqlVersion)
 	// Return mysql connect session
 	return connect, nil
 }
@@ -54,7 +52,7 @@ func PingDatabase(databaseHandler *sql.DB) (bool, error) {
 
 // MySql select query for multiple rows of data.
 // Please put your parameter placeholders in inputParameters to prevent SQL Injection.
-func Select(databaseHandler *sql.DB, columns []string, selectTable string,
+func Select(databaseHandler *sql.DB, columns []string, table string,
 	condition string, inputParameters ...any) ([]map[string]interface{}, error) {
 	if len(columns) == 0 {
 		return nil, fmt.Errorf("no columns: %q", columns)
@@ -62,11 +60,11 @@ func Select(databaseHandler *sql.DB, columns []string, selectTable string,
 	if len(columns) == 1 {
 		column := columns[0]
 		// Execute query
-		query := "SELECT " + column + " FROM " + selectTable + " " + condition
+		query := "SELECT " + column + " FROM " + table + " " + condition
 		rows, errorGetRows := databaseHandler.Query(query, inputParameters...)
 		if errorGetRows != nil {
 			return nil, fmt.Errorf(
-				"failed to executing query: mysql query syntax %q, query parameters %q, mysql error %s",
+				"mysql select statement failed: mysql query syntax %q, query parameters %q, mysql error %s",
 				query, inputParameters, errorGetRows)
 		}
 		// Then close rows
@@ -122,11 +120,11 @@ func Select(databaseHandler *sql.DB, columns []string, selectTable string,
 		columnString.WriteString(column + ", ")
 	}
 	// Execute query
-	query := "SELECT " + columnString.String() + lastColumn + " FROM " + selectTable + " " + condition
+	query := "SELECT " + columnString.String() + lastColumn + " FROM " + table + " " + condition
 	rows, errorGetRows := databaseHandler.Query(query, inputParameters...)
 	if errorGetRows != nil {
 		return nil, fmt.Errorf(
-			"failed to executing query: mysql query syntax %q, query parameters %q, mysql error %s",
+			"mysql select statement failed: mysql query syntax %q, query parameters %q, mysql error %s",
 			query, inputParameters, errorGetRows)
 	}
 	// Then close rows
@@ -174,7 +172,7 @@ func Select(databaseHandler *sql.DB, columns []string, selectTable string,
 
 // Update MySql table. On success update this method will return how many rows updated.
 // Please put your parameter placeholders values in inputParameters to prevent SQL Injection.
-func Update(databaseHandler *sql.DB, updateTable string, columns []string,
+func Update(databaseHandler *sql.DB, table string, columns []string,
 	condition string, inputParameters ...any) (int, error) {
 	if len(columns) == 0 {
 		return 0, fmt.Errorf("no column: %q", columns)
@@ -183,10 +181,10 @@ func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 	if len(columns) == 1 {
 		column := columns[0] + " = ?"
 		// MySql update query
-		query := "UPDATE " + updateTable + " SET " + column + " " + condition
+		query := "UPDATE " + table + " SET " + column + " " + condition
 		executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters...)
 		if errorExecutingQuery != nil {
-			return 0, fmt.Errorf("failed to executing query: %v, mysql syntax: %v", errorExecutingQuery, query)
+			return 0, fmt.Errorf("mysql update statement failed: %v, mysql syntax: %v", errorExecutingQuery, query)
 		}
 		// Get rows updated
 		rowsAffected, errorGetRowsAffected := executeQuery.RowsAffected()
@@ -206,10 +204,10 @@ func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 		columnPlaceholders.WriteString(column + " = ?, ")
 	}
 	// MySql update query
-	query := "UPDATE " + updateTable + " SET " + columnPlaceholders.String() + lastColumn + " " + condition
+	query := "UPDATE " + table + " SET " + columnPlaceholders.String() + lastColumn + " " + condition
 	executeQuery, errorExecutingQuery := databaseHandler.Exec(query, inputParameters...)
 	if errorExecutingQuery != nil {
-		return 0, fmt.Errorf("failed to executing query: %v, mysql syntax: %v", errorExecutingQuery, query)
+		return 0, fmt.Errorf("mysql update statement failed: %v, mysql syntax: %v", errorExecutingQuery, query)
 	}
 	// Get rows updated
 	rowsAffected, errorGetRowsAffected := executeQuery.RowsAffected()
@@ -222,7 +220,7 @@ func Update(databaseHandler *sql.DB, updateTable string, columns []string,
 
 // Insert into MySql table. On success update this method will return how many rows affected.
 // Please put your parameter placeholders values in inputParameters to prevent SQL Injection.
-func Insert(databaseHandler *sql.DB, insertIntoTable string, columns []string, inputParameters ...any) (int, error) {
+func Insert(databaseHandler *sql.DB, table string, columns []string, inputParameters ...any) (int, error) {
 	if len(columns) == 0 {
 		return 0, fmt.Errorf("no column: %q", columns)
 	}
@@ -230,15 +228,15 @@ func Insert(databaseHandler *sql.DB, insertIntoTable string, columns []string, i
 	if len(columns) == 1 {
 		column := columns[0]
 		// MySql insert query
-		query := "INSERT INTO " + insertIntoTable + " (" + column + ") VALUES (?)"
+		query := "INSERT INTO " + table + " (" + column + ") VALUES (?)"
 		result, errorQueryResult := databaseHandler.Exec(query, inputParameters...)
 		if errorQueryResult != nil {
-			return 0, fmt.Errorf("failed insert data to database: %q, mysql syntax: %q", errorQueryResult, query)
+			return 0, fmt.Errorf("mysql insert statement failed: %v, mysql syntax: %v", errorQueryResult, query)
 		}
 		// Get the new album's generated ID for the client.
 		rowsAffected, errorGetRowsAffected := result.RowsAffected()
 		if errorGetRowsAffected != nil {
-			return 0, errorGetRowsAffected
+			return 0, fmt.Errorf("failed to get how many new rows: %v", errorGetRowsAffected)
 		}
 		// Return the new album's ID.
 		return int(rowsAffected), nil
@@ -260,16 +258,71 @@ func Insert(databaseHandler *sql.DB, insertIntoTable string, columns []string, i
 		columnString.WriteString(column + ", ")
 	}
 	// MySql insert query
-	query := "INSERT INTO " + insertIntoTable + " (" + columnString.String() + lastColumn + ") VALUES (" +
+	query := "INSERT INTO " + table + " (" + columnString.String() + lastColumn + ") VALUES (" +
 		valuePlaceholders.String() + ")"
 	result, errorQueryResult := databaseHandler.Exec(query, inputParameters...)
 	if errorQueryResult != nil {
-		return 0, fmt.Errorf("failed insert data to database: %q, mysql syntax: %q", errorQueryResult, query)
+		return 0, fmt.Errorf("mysql insert statement failed: %v, mysql syntax: %v", errorQueryResult, query)
 	}
 	// Get the new album's generated ID for the client.
 	rowsAffected, errorGetRowsAffected := result.RowsAffected()
 	if errorGetRowsAffected != nil {
-		return 0, errorGetRowsAffected
+		return 0, fmt.Errorf("failed to get how many new rows: %v", errorGetRowsAffected)
+	}
+	// Return the new album's ID.
+	return int(rowsAffected), nil
+}
+
+// Replace into MySql table. On success update this method will return how many rows affected.
+// Please put your parameter placeholders values in inputParameters to prevent SQL Injection.
+func Replace(databaseHandler *sql.DB, table string, columns []string, inputParameters ...any) (int, error) {
+	if len(columns) == 0 {
+		return 0, fmt.Errorf("no column: %q", columns)
+	}
+	// Single column insert
+	if len(columns) == 1 {
+		column := columns[0]
+		// MySql insert query
+		query := "REPLACE INTO " + table + " (" + column + ") VALUES (?)"
+		result, errorQueryResult := databaseHandler.Exec(query, inputParameters...)
+		if errorQueryResult != nil {
+			return 0, fmt.Errorf("mysql replace statement failed: %v, mysql syntax: %v", errorQueryResult, query)
+		}
+		// Get the new album's generated ID for the client.
+		rowsAffected, errorGetRowsAffected := result.RowsAffected()
+		if errorGetRowsAffected != nil {
+			return 0, fmt.Errorf("failed to get how many rows affected: %v", errorGetRowsAffected)
+		}
+		// Return the new album's ID.
+		return int(rowsAffected), nil
+	}
+	// Create value parameter placeholders
+	var valuePlaceholders strings.Builder
+	valuePlaceholders.WriteString("?")
+	for i := 1; i < len(inputParameters); i++ {
+		valuePlaceholders.WriteString(", ?")
+	}
+	// Extract columns parameter to syntax string
+	var columnString strings.Builder
+	// Get last column from columns parameter
+	lastColumn := columns[len(columns)-1]
+	// Delete last column from columns parameter
+	columns = columns[:len(columns)-1]
+	// Extract columns
+	for _, column := range columns {
+		columnString.WriteString(column + ", ")
+	}
+	// MySql insert query
+	query := "REPLACE INTO " + table + " (" + columnString.String() + lastColumn + ") VALUES (" +
+		valuePlaceholders.String() + ")"
+	result, errorQueryResult := databaseHandler.Exec(query, inputParameters...)
+	if errorQueryResult != nil {
+		return 0, fmt.Errorf("mysql replace statement failed: %v, mysql syntax: %v", errorQueryResult, query)
+	}
+	// Get the new album's generated ID for the client.
+	rowsAffected, errorGetRowsAffected := result.RowsAffected()
+	if errorGetRowsAffected != nil {
+		return 0, fmt.Errorf("failed to get how many rows affected: %v", errorGetRowsAffected)
 	}
 	// Return the new album's ID.
 	return int(rowsAffected), nil
